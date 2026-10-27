@@ -1,4 +1,4 @@
-const CACHE_NAME = 'my-ai-island-pwa-v20261027_3';
+const CACHE_NAME = 'my-ai-island-pwa-v20261027_4';
 const STATIC_ASSETS = [
   './',
   './index.html',
