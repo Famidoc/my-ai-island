@@ -71,10 +71,10 @@
           <span class="ctrl-label">今日處方籤</span>
         </button>
 
-        <!-- 療癒環境音開關 -->
-        <button id="btn-ambient-audio" class="hud-ctrl-btn" onclick="toggleAmbientAudio()" title="開啟/關閉島嶼海浪微風與真空管收音機環境音">
-          <span id="audio-icon">🔇</span>
-          <span id="audio-label" class="ctrl-label">環境音</span>
+        <!-- 療癒環境音開關（預設開啟） -->
+        <button id="btn-ambient-audio" class="hud-ctrl-btn audio-active" onclick="toggleAmbientAudio()" title="開啟/關閉島嶼海浪微風、森林鳥鳴與真空管收音機環境音">
+          <span id="audio-icon">🔊</span>
+          <span id="audio-label" class="ctrl-label">海浪鳥鳴中</span>
         </button>
 
         <!-- PWA 安裝按鈕 -->
@@ -555,11 +555,11 @@
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
     </div>
 
-    <script src="app.js?v=20261027_6"></script>
+    <script src="app.js?v=20261027_7"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js?v=20261027_6')
+          navigator.serviceWorker.register('./sw.js?v=20261027_7')
             .then(registration => {
               console.log('我的AI島 ServiceWorker 註冊成功，範圍為: ', registration.scope);
             })

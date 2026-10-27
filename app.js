@@ -47,10 +47,13 @@ let dragMoved = false;
 let dragStartX = 0;
 let dragStartY = 0;
 
-// Web Audio 環境音效狀態
+// Web Audio 環境音效狀態（預設開啟，支援進館自動暫停、回島自動恢復與森林鳥鳴合成）
 let audioCtx = null;
 let isAudioPlaying = false;
+let userWantsAmbientAudio = true;
 let audioMasterGain = null;
+let birdBusNode = null;
+let birdSongTimer = null;
 
 const getModalImageSize = () => window.innerWidth < 768 ? 'w800' : 'w1200';
 
@@ -230,6 +233,7 @@ window.onload = function() {
   loadData();
   checkSubscribeIntent();
   setupPwaManager();
+  setupAmbientAudioAutoStart();
   window.addEventListener('hashchange', checkSubscribeIntent);
 
   // 鍵盤 Esc 關閉視窗支援
@@ -612,12 +616,14 @@ function openPavilion(landmarkKey) {
   const overlay = document.getElementById('pavilion-modal');
   overlay.classList.add('open');
   overlay.scrollTo({ top: 0, behavior: 'smooth' });
+  syncAmbientAudioState();
 }
 
 function closePavilion() {
   activePavilionKey = null;
   document.getElementById('pavilion-modal').classList.remove('open');
   document.querySelectorAll('.dock-item').forEach(btn => btn.classList.remove('active'));
+  syncAmbientAudioState();
 }
 
 function closePavilionOnBackdrop(e) {
@@ -855,135 +861,334 @@ function setupIslandParticles() {
   animate();
 }
 
-// Web Audio API 合成自然海浪潮汐、樹梢微風與極微弱的遠方溫室收音機微頻
-function toggleAmbientAudio() {
+// ==========================================================================
+// Web Audio API 療癒環境音引擎：海浪潮汐、樹梢微風、悅耳森林鳥鳴與真空管微頻
+// 支援「預設開啟」、「進館自動靜音」、「回島自動恢復」與「手動開關記憶」
+// ==========================================================================
+function isUserInPavilionOrModal() {
+  const pavOpen = document.getElementById('pavilion-modal')?.classList.contains('open');
+  const modalOpen = document.getElementById('modal')?.style.display === 'block';
+  const novelOpen = document.getElementById('novel-modal')?.style.display === 'block';
+  const listViewActive = document.getElementById('island-list-view')?.classList.contains('active');
+  return Boolean(pavOpen || modalOpen || novelOpen || listViewActive);
+}
+
+function initAmbientAudioEngine() {
+  if (audioCtx) return;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return;
+
+  audioCtx = new AudioContextClass();
+
+  audioMasterGain = audioCtx.createGain();
+  audioMasterGain.gain.value = 0.0001;
+  audioMasterGain.connect(audioCtx.destination);
+
+  // 建立 6 秒立體粉紅噪音基底 (供海浪與微風共用)
+  const bufferSize = audioCtx.sampleRate * 6;
+  const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const output = noiseBuffer.getChannelData(0);
+  let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+  for (let i = 0; i < bufferSize; i++) {
+    const white = Math.random() * 2 - 1;
+    b0 = 0.99886 * b0 + white * 0.0555179;
+    b1 = 0.99332 * b1 + white * 0.0750759;
+    b2 = 0.96900 * b2 + white * 0.1538520;
+    b3 = 0.86650 * b3 + white * 0.3104856;
+    b4 = 0.55000 * b4 + white * 0.5329522;
+    b5 = -0.7616 * b5 - white * 0.0168980;
+    output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.12;
+    b6 = white * 0.115926;
+  }
+
+  // --------------------------------------------------------
+  // 1. 主音軌 A：拍岸海浪潮汐 (Rolling Ocean Surf)
+  // --------------------------------------------------------
+  const waveSource = audioCtx.createBufferSource();
+  waveSource.buffer = noiseBuffer;
+  waveSource.loop = true;
+
+  const waveFilter = audioCtx.createBiquadFilter();
+  waveFilter.type = 'lowpass';
+  waveFilter.frequency.value = 500;
+  waveFilter.Q.value = 0.7;
+
+  const waveGain = audioCtx.createGain();
+  waveGain.gain.value = 0.52;
+
+  const waveLfo = audioCtx.createOscillator();
+  waveLfo.type = 'sine';
+  waveLfo.frequency.value = 0.125;
+
+  const waveFilterMod = audioCtx.createGain();
+  waveFilterMod.gain.value = 340;
+  waveLfo.connect(waveFilterMod);
+  waveFilterMod.connect(waveFilter.frequency);
+
+  const waveAmpMod = audioCtx.createGain();
+  waveAmpMod.gain.value = 0.32;
+  waveLfo.connect(waveAmpMod);
+  waveAmpMod.connect(waveGain.gain);
+  waveLfo.start();
+
+  waveSource.connect(waveFilter);
+  waveFilter.connect(waveGain);
+  waveGain.connect(audioMasterGain);
+  waveSource.start();
+
+  // --------------------------------------------------------
+  // 2. 主音軌 B：雲巔樹梢與海面微風 (Gentle Island Breeze)
+  // --------------------------------------------------------
+  const breezeSource = audioCtx.createBufferSource();
+  breezeSource.buffer = noiseBuffer;
+  breezeSource.loop = true;
+  breezeSource.playbackRate.value = 1.15;
+
+  const breezeFilter = audioCtx.createBiquadFilter();
+  breezeFilter.type = 'bandpass';
+  breezeFilter.frequency.value = 920;
+  breezeFilter.Q.value = 1.4;
+
+  const breezeGain = audioCtx.createGain();
+  breezeGain.gain.value = 0.2;
+
+  const breezeLfo = audioCtx.createOscillator();
+  breezeLfo.type = 'sine';
+  breezeLfo.frequency.value = 0.07;
+  const breezeFilterMod = audioCtx.createGain();
+  breezeFilterMod.gain.value = 400;
+  breezeLfo.connect(breezeFilterMod);
+  breezeFilterMod.connect(breezeFilter.frequency);
+  breezeLfo.start();
+
+  breezeSource.connect(breezeFilter);
+  breezeFilter.connect(breezeGain);
+  breezeGain.connect(audioMasterGain);
+  breezeSource.start();
+
+  // --------------------------------------------------------
+  // 3. 主音軌 C：悅耳森林鳥鳴空間匯流排 (山谷回音與溫潤濾波)
+  // --------------------------------------------------------
+  birdBusNode = audioCtx.createGain();
+  birdBusNode.gain.value = 0.85;
+
+  const birdToneFilter = audioCtx.createBiquadFilter();
+  birdToneFilter.type = 'lowpass';
+  birdToneFilter.frequency.value = 3600;
+
+  // 森林山谷自然空間回音 (Delay + Feedback)
+  const echoDelay = audioCtx.createDelay();
+  echoDelay.delayTime.value = 0.17;
+  const echoFeedback = audioCtx.createGain();
+  echoFeedback.gain.value = 0.24;
+  const echoWet = audioCtx.createGain();
+  echoWet.gain.value = 0.28;
+
+  birdBusNode.connect(birdToneFilter);
+  birdToneFilter.connect(audioMasterGain);
+
+  birdToneFilter.connect(echoDelay);
+  echoDelay.connect(echoFeedback);
+  echoFeedback.connect(echoDelay);
+  echoDelay.connect(echoWet);
+  echoWet.connect(audioMasterGain);
+
+  // --------------------------------------------------------
+  // 4. 極微弱背景點綴：遠方溫室隱約飄來的真空管暖音
+  // --------------------------------------------------------
+  const osc1 = audioCtx.createOscillator();
+  const osc2 = audioCtx.createOscillator();
+  const padGain = audioCtx.createGain();
+  osc1.type = 'sine';
+  osc2.type = 'sine';
+  osc1.frequency.value = 216;
+  osc2.frequency.value = 324;
+  padGain.gain.value = 0.002;
+  osc1.connect(padGain);
+  osc2.connect(padGain);
+  padGain.connect(audioMasterGain);
+  osc1.start();
+  osc2.start();
+
+  scheduleNextBirdSong(900);
+}
+
+// 合成單一清脆圓潤的鳥鳴音符 (支援滑音、微顫音與左右樹冠立體聲定位)
+function triggerSingleBirdNote(startTime, fStart, fPeak, fEnd, duration, peakGain, panVal = 0) {
+  if (!audioCtx || !birdBusNode) return;
+
+  const osc = audioCtx.createOscillator();
+  const subOsc = audioCtx.createOscillator();
+  const subGain = audioCtx.createGain();
+  const noteGain = audioCtx.createGain();
+
+  osc.type = 'sine';
+  subOsc.type = 'triangle';
+  subGain.gain.value = 0.14; // 賦予木管笛音般的溫潤泛音
+
+  osc.frequency.setValueAtTime(fStart, startTime);
+  osc.frequency.exponentialRampToValueAtTime(fPeak, startTime + duration * 0.45);
+  osc.frequency.exponentialRampToValueAtTime(fEnd, startTime + duration);
+
+  subOsc.frequency.setValueAtTime(fStart * 0.5, startTime);
+  subOsc.frequency.exponentialRampToValueAtTime(fPeak * 0.5, startTime + duration * 0.45);
+  subOsc.frequency.exponentialRampToValueAtTime(fEnd * 0.5, startTime + duration);
+
+  // 柔和無爆音的音量包絡線
+  noteGain.gain.setValueAtTime(0.0001, startTime);
+  noteGain.gain.linearRampToValueAtTime(peakGain, startTime + Math.min(0.022, duration * 0.25));
+  noteGain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+  osc.connect(noteGain);
+  subOsc.connect(subGain);
+  subGain.connect(noteGain);
+
+  if (typeof audioCtx.createStereoPanner === 'function') {
+    const panner = audioCtx.createStereoPanner();
+    panner.pan.setValueAtTime(panVal, startTime);
+    noteGain.connect(panner);
+    panner.connect(birdBusNode);
+  } else {
+    noteGain.connect(birdBusNode);
+  }
+
+  osc.start(startTime);
+  subOsc.start(startTime);
+  osc.stop(startTime + duration + 0.02);
+  subOsc.stop(startTime + duration + 0.02);
+}
+
+// 隨機演奏 4 種自然森林鳥鳴樂句 (山雀清啼、畫眉五聲婉轉、銀杏林青笛、雙鳥遠近對唱)
+function playMelodicBirdPhrase() {
+  if (!audioCtx || audioCtx.state !== 'running' || !isAudioPlaying) return;
+
+  const now = audioCtx.currentTime + 0.04;
+  const pan = (Math.random() * 1.3) - 0.65; // -0.65 (左方巨木) ~ +0.65 (右方銀杏林)
+  const volScale = isNightMode ? 0.55 : 1.0; // 夜晚轉為輕柔夜鶯音量
+  const pattern = Math.floor(Math.random() * 4);
+
+  if (pattern === 0) {
+    // 樂句 A：山雀輕快雙音清啼 (Sweet Rising Third)
+    triggerSingleBirdNote(now, 2050, 2580, 2420, 0.11, 0.065 * volScale, pan);
+    triggerSingleBirdNote(now + 0.15, 2100, 2720, 2550, 0.13, 0.072 * volScale, pan);
+  } else if (pattern === 1) {
+    // 樂句 B：畫眉鳥五聲宮調婉轉啼鳴 (Melodic Pentatonic Phrase)
+    const notes = [
+      { delay: 0.00, f1: 1760, f2: 2093, f3: 1975, dur: 0.12, g: 0.06 },
+      { delay: 0.15, f1: 1975, f2: 2489, f3: 2349, dur: 0.11, g: 0.068 },
+      { delay: 0.29, f1: 2349, f2: 2793, f3: 2637, dur: 0.15, g: 0.072 },
+      { delay: 0.47, f1: 2489, f2: 2093, f3: 1760, dur: 0.18, g: 0.052 }
+    ];
+    notes.forEach(n => {
+      triggerSingleBirdNote(now + n.delay, n.f1, n.f2, n.f3, n.dur, n.g * volScale, pan);
+    });
+  } else if (pattern === 2) {
+    // 樂句 C：雲巔青笛圓潤滑音 (Gentle Forest Glissando)
+    triggerSingleBirdNote(now, 1620, 2380, 1980, 0.21, 0.062 * volScale, pan);
+    triggerSingleBirdNote(now + 0.25, 1980, 2640, 2480, 0.14, 0.055 * volScale, pan);
+    triggerSingleBirdNote(now + 0.42, 2480, 2820, 2600, 0.12, 0.045 * volScale, pan);
+  } else {
+    // 樂句 D：左右樹林雙鳥遠近對唱 (Canopy Call & Response)
+    const leftPan = -0.55;
+    const rightPan = 0.6;
+    triggerSingleBirdNote(now, 1920, 2450, 2300, 0.12, 0.066 * volScale, leftPan);
+    triggerSingleBirdNote(now + 0.14, 2300, 2760, 2580, 0.14, 0.068 * volScale, leftPan);
+    // 遠處另一棵樹上的鳥兒輕聲回應
+    triggerSingleBirdNote(now + 0.44, 2150, 2620, 2400, 0.13, 0.038 * volScale, rightPan);
+    triggerSingleBirdNote(now + 0.59, 2400, 2050, 1880, 0.16, 0.035 * volScale, rightPan);
+  }
+}
+
+function scheduleNextBirdSong(customDelayMs = null) {
+  if (birdSongTimer) clearTimeout(birdSongTimer);
+  const nextDelay = customDelayMs !== null
+    ? customDelayMs
+    : (isNightMode ? 4500 + Math.random() * 3500 : 2500 + Math.random() * 2800);
+
+  birdSongTimer = setTimeout(() => {
+    if (isAudioPlaying && audioCtx && audioCtx.state === 'running' && !isUserInPavilionOrModal()) {
+      playMelodicBirdPhrase();
+    }
+    scheduleNextBirdSong();
+  }, nextDelay);
+}
+
+function updateAmbientButtonUI() {
   const btn = document.getElementById('btn-ambient-audio');
   const icon = document.getElementById('audio-icon');
   const label = document.getElementById('audio-label');
+  if (!btn || !icon) return;
 
-  if (!audioCtx) {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    audioCtx = new AudioContextClass();
-
-    audioMasterGain = audioCtx.createGain();
-    audioMasterGain.gain.value = 0.001;
-    audioMasterGain.connect(audioCtx.destination);
-
-    // 建立 6 秒立體粉紅噪音基底 (供海浪與微風共用)
-    const bufferSize = audioCtx.sampleRate * 6;
-    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-    for (let i = 0; i < bufferSize; i++) {
-      const white = Math.random() * 2 - 1;
-      b0 = 0.99886 * b0 + white * 0.0555179;
-      b1 = 0.99332 * b1 + white * 0.0750759;
-      b2 = 0.96900 * b2 + white * 0.1538520;
-      b3 = 0.86650 * b3 + white * 0.3104856;
-      b4 = 0.55000 * b4 + white * 0.5329522;
-      b5 = -0.7616 * b5 - white * 0.0168980;
-      output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.12;
-      b6 = white * 0.115926;
-    }
-
-    // --------------------------------------------------------
-    // 1. 主音軌 A：拍岸海浪潮汐 (Rolling Ocean Surf - 清晰飽滿)
-    // --------------------------------------------------------
-    const waveSource = audioCtx.createBufferSource();
-    waveSource.buffer = noiseBuffer;
-    waveSource.loop = true;
-
-    const waveFilter = audioCtx.createBiquadFilter();
-    waveFilter.type = 'lowpass';
-    waveFilter.frequency.value = 520;
-    waveFilter.Q.value = 0.7;
-
-    const waveGain = audioCtx.createGain();
-    waveGain.gain.value = 0.55;
-
-    // 海浪推進與退潮 LFO (約 8 秒一波浪潮，同時調變濾波頻率與音量大小)
-    const waveLfo = audioCtx.createOscillator();
-    waveLfo.type = 'sine';
-    waveLfo.frequency.value = 0.125;
-
-    const waveFilterMod = audioCtx.createGain();
-    waveFilterMod.gain.value = 360; // 頻率在 160Hz ~ 880Hz 間湧動
-    waveLfo.connect(waveFilterMod);
-    waveFilterMod.connect(waveFilter.frequency);
-
-    const waveAmpMod = audioCtx.createGain();
-    waveAmpMod.gain.value = 0.35; // 音量隨浪潮漲退明顯起伏
-    waveLfo.connect(waveAmpMod);
-    waveAmpMod.connect(waveGain.gain);
-    waveLfo.start();
-
-    waveSource.connect(waveFilter);
-    waveFilter.connect(waveGain);
-    waveGain.connect(audioMasterGain);
-    waveSource.start();
-
-    // --------------------------------------------------------
-    // 2. 主音軌 B：雲巔樹梢與海面微風 (Gentle Island Breeze)
-    // --------------------------------------------------------
-    const breezeSource = audioCtx.createBufferSource();
-    breezeSource.buffer = noiseBuffer;
-    breezeSource.loop = true;
-    breezeSource. playbackRate.value = 1.15;
-
-    const breezeFilter = audioCtx.createBiquadFilter();
-    breezeFilter.type = 'bandpass';
-    breezeFilter.frequency.value = 950;
-    breezeFilter.Q.value = 1.4;
-
-    const breezeGain = audioCtx.createGain();
-    breezeGain.gain.value = 0.22;
-
-    const breezeLfo = audioCtx.createOscillator();
-    breezeLfo.type = 'sine';
-    breezeLfo.frequency.value = 0.07; // 約 14 秒一陣輕柔海風
-    const breezeFilterMod = audioCtx.createGain();
-    breezeFilterMod.gain.value = 420;
-    breezeLfo.connect(breezeFilterMod);
-    breezeFilterMod.connect(breezeFilter.frequency);
-    breezeLfo.start();
-
-    breezeSource.connect(breezeFilter);
-    breezeFilter.connect(breezeGain);
-    breezeGain.connect(audioMasterGain);
-    breezeSource.start();
-
-    // --------------------------------------------------------
-    // 3. 極微弱背景點綴：遠方溫室隱約飄來的真空管暖音 (降至原本 1/15)
-    // --------------------------------------------------------
-    const osc1 = audioCtx.createOscillator();
-    const osc2 = audioCtx.createOscillator();
-    const padGain = audioCtx.createGain();
-    osc1.type = 'sine';
-    osc2.type = 'sine';
-    osc1.frequency.value = 216;
-    osc2.frequency.value = 324;
-    padGain.gain.value = 0.0022; // 極輕微的空氣底韻，完全不搶海浪與微風
-    osc1.connect(padGain);
-    osc2.connect(padGain);
-    padGain.connect(audioMasterGain);
-    osc1.start();
-    osc2.start();
-  }
-
-  if (!isAudioPlaying) {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    audioMasterGain.gain.setTargetAtTime(0.65, audioCtx.currentTime, 0.8);
-    isAudioPlaying = true;
+  if (userWantsAmbientAudio) {
     btn.classList.add('audio-active');
     icon.innerText = '🔊';
-    if (label) label.innerText = '海浪微風中';
+    if (label) label.innerText = '海浪鳥鳴中';
   } else {
-    audioMasterGain.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.4);
-    isAudioPlaying = false;
     btn.classList.remove('audio-active');
     icon.innerText = '🔇';
     if (label) label.innerText = '環境音';
   }
+}
+
+function syncAmbientAudioState() {
+  updateAmbientButtonUI();
+  const shouldPlayNow = userWantsAmbientAudio && !isUserInPavilionOrModal();
+
+  if (shouldPlayNow) {
+    initAmbientAudioEngine();
+    if (!audioCtx) return;
+
+    if (audioCtx.state === 'suspended') {
+      audioCtx.resume().then(() => {
+        if (userWantsAmbientAudio && !isUserInPavilionOrModal()) {
+          audioMasterGain.gain.setTargetAtTime(0.66, audioCtx.currentTime, 0.65);
+          isAudioPlaying = true;
+          setTimeout(() => playMelodicBirdPhrase(), 350);
+        }
+      }).catch(() => {});
+    } else {
+      const wasPlaying = isAudioPlaying;
+      audioMasterGain.gain.setTargetAtTime(0.66, audioCtx.currentTime, 0.65);
+      isAudioPlaying = true;
+      if (!wasPlaying) {
+        setTimeout(() => playMelodicBirdPhrase(), 380);
+      }
+    }
+  } else {
+    if (audioCtx && isAudioPlaying) {
+      audioMasterGain.gain.setTargetAtTime(0.0001, audioCtx.currentTime, 0.32);
+    }
+    isAudioPlaying = false;
+  }
+}
+
+function setupAmbientAudioAutoStart() {
+  syncAmbientAudioState();
+
+  // 若瀏覽器因自動播放政策先暫停了 AudioContext，在使用者首次與島嶼互動（滑動、點擊、滾輪、按鍵）時立即無縫喚醒
+  const unlockEvents = ['pointerdown', 'touchstart', 'wheel', 'keydown', 'click'];
+  const unlockHandler = () => {
+    if (userWantsAmbientAudio && !isUserInPavilionOrModal()) {
+      initAmbientAudioEngine();
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume().then(() => {
+          syncAmbientAudioState();
+        }).catch(() => {});
+      } else {
+        syncAmbientAudioState();
+      }
+    }
+    if (audioCtx && audioCtx.state === 'running') {
+      unlockEvents.forEach(evt => window.removeEventListener(evt, unlockHandler));
+    }
+  };
+
+  unlockEvents.forEach(evt => window.addEventListener(evt, unlockHandler, { passive: true }));
+}
+
+function toggleAmbientAudio() {
+  userWantsAmbientAudio = !userWantsAmbientAudio;
+  syncAmbientAudioState();
 }
 
 // ==========================================================================
@@ -1077,6 +1282,7 @@ function switchMainView(mode) {
     btnList.classList.remove('active');
     btnMap.classList.add('active');
   }
+  syncAmbientAudioState();
 }
 
 // ==========================================================================
@@ -1198,6 +1404,7 @@ function openModal(item) {
   renderModalContent(item);
   document.getElementById('modal').style.display = 'block';
   document.body.style.overflow = 'hidden';
+  syncAmbientAudioState();
 }
 
 function renderModalContent(explicitItem = null) {
@@ -1453,6 +1660,7 @@ function closeModalDirect() {
   document.body.style.overflow = '';
   const container = document.getElementById('modal-media-container');
   if (container) container.innerHTML = '';
+  syncAmbientAudioState();
 }
 
 function closeModal(e) {
@@ -1515,6 +1723,7 @@ function openNovelModal(item, targetChapterIndex = null) {
 
   document.getElementById('novel-modal').style.display = 'block';
   document.body.style.overflow = 'hidden';
+  syncAmbientAudioState();
 }
 
 function getCleanChapterTitle(index, rawTitle) {
@@ -1709,6 +1918,7 @@ function closeNovelModal(event) {
 function closeNovelModalDirect() {
   document.getElementById('novel-modal').style.display = 'none';
   document.body.style.overflow = '';
+  syncAmbientAudioState();
 }
 
 function fetchChapterComments(chapterId) {
