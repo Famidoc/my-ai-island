@@ -383,6 +383,20 @@ function renderIslandLandmarks() {
   });
 }
 
+function extractCleanWorkTitle(rawTitle) {
+  if (!rawTitle) return '';
+  let t = String(rawTitle).trim();
+  // 僅移除固定系列專欄前綴，保留畫作本身以【】命名的作品標題
+  t = t.replace(/^【(加減學學|偶爾想想|慢畫漫畫|連載小說|App\s*Share)】/i, '').trim();
+  const lines = t.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  t = lines[0] || '';
+  t = t.replace(/^[【《]+|[】》]+$/g, '').trim();
+  if (!t && lines[1]) {
+    t = lines[1].replace(/^[【《(（]+|[】》)）]+$/g, '').trim();
+  }
+  return t.length > 10 ? t.slice(0, 10) + '…' : t;
+}
+
 function updateIslandStatsAndBubbles() {
   const counts = {
     images: allData.filter(x => (x.type || '').toLowerCase() === 'image').length,
@@ -414,9 +428,9 @@ function updateIslandStatsAndBubbles() {
 
     if (lm.dataType) {
       const items = allData.filter(x => (x.type || '').toLowerCase() === lm.dataType);
-      const latestTitle = items[0] ? items[0].title.replace(/【.*?】/g, '').trim().slice(0, 8) : '';
+      const latestTitle = items[0] ? extractCleanWorkTitle(items[0].title) : '';
       if (lm.key === 'novels') {
-        bubbleTextEl.innerText = `連載中 · ${items.length} 部作品`;
+        bubbleTextEl.innerText = latestTitle ? `${items.length} 部 · 新《${latestTitle}》` : `連載中 · ${items.length} 部作品`;
       } else {
         bubbleTextEl.innerText = latestTitle ? `${items.length} 件 · 新《${latestTitle}》` : `館藏 ${items.length} 件`;
       }
