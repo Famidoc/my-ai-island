@@ -20,7 +20,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <meta name="description" content="歡迎登陸張文華醫師 (Famidoc Chang) 的「我的AI島」！結合溫暖水彩奇幻與未來科幻生態的互動式 AI 創作島嶼。">
 
-    <link rel="stylesheet" href="style.css?v=20261027_3">
+    <link rel="stylesheet" href="style.css?v=20261027_5">
 
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-XLWN2XBQ5F"></script>
     <script>
@@ -52,10 +52,10 @@
         <!-- 地圖模式 / 全島總覽切換 -->
         <div class="view-mode-switch">
           <button id="btn-mode-map" class="mode-btn active" onclick="switchMainView('map')">
-            <span>🗺️</span> 島嶼地圖
+            <span>🗺️</span><span class="mode-prefix">島嶼</span>地圖
           </button>
           <button id="btn-mode-list" class="mode-btn" onclick="switchMainView('list')">
-            <span>🗂️</span> 全島總覽
+            <span>🗂️</span><span class="mode-prefix">全島</span>總覽
           </button>
         </div>
 
@@ -555,11 +555,11 @@
       <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
     </div>
 
-    <script src="app.js?v=20261027_4"></script>
+    <script src="app.js?v=20261027_5"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js?v=20261027_4')
+          navigator.serviceWorker.register('./sw.js?v=20261027_5')
             .then(registration => {
               console.log('我的AI島 ServiceWorker 註冊成功，範圍為: ', registration.scope);
             })
