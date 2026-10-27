@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8">
+    <title>我的AI島 My AI Island — 張文華醫師的 AI 創作生態島</title>
+    <base target="_top">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Noto+Serif+TC:wght@500;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="favicon.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f2027" id="meta-theme-color">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="我的AI島">
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="description" content="歡迎登陸張文華醫師 (Famidoc Chang) 的「我的AI島」！結合溫暖水彩奇幻與未來科幻生態的互動式 AI 創作島嶼。">
+
+    <link rel="stylesheet" href="style.css?v=20261027_3">
+
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XLWN2XBQ5F"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XLWN2XBQ5F', { 'cookie_flags': 'SameSite=None;Secure' });
+    </script>
+  </head>
+  <body class="island-mode-day">
+    <!-- 頂部懸浮島嶼導航列 (Top HUD Bar) -->
+    <header class="island-topbar">
+      <div class="topbar-brand" onclick="resetIslandView()" title="點擊回到全島中央視角">
+        <img src="favicon.png" alt="我的AI島" class="topbar-logo" onerror="this.style.display='none'">
+        <div class="topbar-title-group">
+          <div class="topbar-title">
+            <span class="island-badge">ISLAND OS</span>
+            <h1>我的AI島 <span class="en-sub">MY AI ISLAND</span></h1>
+          </div>
+          <p class="topbar-subtitle">張文華醫師 (Famidoc Chang) 的奇幻科幻創作生態島</p>
+        </div>
+      </div>
+
+      <div class="topbar-stats" id="topbar-stats-pill" title="全島即時館藏與互動統計">
+        <span id="stat-total-works">🌟 載入島嶼資料中...</span>
+      </div>
+
+      <div class="topbar-controls">
+        <!-- 地圖模式 / 全島總覽切換 -->
+        <div class="view-mode-switch">
+          <button id="btn-mode-map" class="mode-btn active" onclick="switchMainView('map')">
+            <span>🗺️</span> 島嶼地圖
+          </button>
+          <button id="btn-mode-list" class="mode-btn" onclick="switchMainView('list')">
+            <span>🗂️</span> 全島總覽
+          </button>
+        </div>
+
+        <!-- 晨曦日光 / 星辰量子夜 切換 -->
+        <button id="btn-day-night" class="hud-ctrl-btn" onclick="toggleDayNight()" title="切換「晨曦日光島」與「星辰量子夜」">
+          <span id="day-night-icon">🌙</span>
+          <span id="day-night-label" class="ctrl-label">星辰量子夜</span>
+        </button>
+
+        <!-- 島主處方籤 / 薛丁格的貓 -->
+        <button class="hud-ctrl-btn fortune-btn" onclick="openFortuneModal()" title="點擊抽取「島主今日處方籤 & 薛丁格的貓隨機推薦」">
+          <span>🐈</span>
+          <span class="ctrl-label">今日處方籤</span>
+        </button>
+
+        <!-- 療癒環境音開關 -->
+        <button id="btn-ambient-audio" class="hud-ctrl-btn" onclick="toggleAmbientAudio()" title="開啟/關閉島嶼海浪微風與真空管收音機環境音">
+          <span id="audio-icon">🔇</span>
+          <span id="audio-label" class="ctrl-label">環境音</span>
+        </button>
+
+        <!-- PWA 安裝按鈕 -->
+        <button id="btn-install-pwa" class="hud-ctrl-btn pwa-install-btn" onclick="handleInstallPwaClick()" title="將「我的AI島」安裝為手機或電腦桌面獨立 App，支援離線巡島">
+          <span>📲</span>
+          <span id="pwa-btn-label" class="ctrl-label">安裝 App</span>
+        </button>
+
+        <!-- 原版 My AI Works 傳送門 -->
+        <a href="https://famidoc.github.io/my-ai-works/" target="_blank" rel="noopener" class="hud-ctrl-btn portal-link" title="前往原版 My AI Works 賽博終端展示平台">
+          <span>🚀</span>
+          <span class="ctrl-label">原版平台</span>
+        </a>
+      </div>
+    </header>
+
+    <!-- 系統載入提示 -->
+    <div id="loader" class="island-loader">
+      <div class="loader-spinner"></div>
+      <div class="loader-text">ISLAND INITIALIZING... 正在連通跨維度生態島資料...</div>
+    </div>
+
+    <!-- ==========================================
+         主視圖 A：互動式全景奇幻島地圖 (#island-map-view)
+         ========================================== -->
+    <main id="island-map-view" class="island-map-view active">
+      <div id="map-viewport" class="map-viewport">
+        <div id="map-stage" class="map-stage">
+          <!-- 島嶼全景底圖 -->
+          <img id="island-bg-img" src="island-map.png" alt="我的AI島全景地圖" class="island-bg-img" draggable="false">
+
+          <!-- 日夜光影氛圍遮罩層 -->
+          <div class="island-lighting-layer"></div>
+
+          <!-- 動態粒子特效畫布 (雲霧/銀杏葉 vs 星空/量子螢火蟲/流星) -->
+          <canvas id="island-fx-canvas" class="island-fx-canvas"></canvas>
+
+          <!-- 七大主題地標互動標記層 (由 JS 根據座標動態渲染與更新氣泡) -->
+          <div id="landmarks-layer" class="landmarks-layer"></div>
+
+          <!-- 彩蛋 NPC：薛丁格的橘貓 -->
+          <button id="npc-cat-pin" class="npc-cat-pin" onclick="openFortuneModal()" style="left: 58%; top: 56%;" title="點擊呼叫「薛丁格的橘貓」領取島主今日處方籤！">
+            <div class="npc-cat-bubble" id="npc-cat-bubble">😺 點擊領取「島主今日處方」！</div>
+            <div class="npc-cat-avatar">🐈</div>
+            <div class="npc-cat-name">薛丁格的橘貓</div>
+          </button>
+        </div>
+
+        <!-- 地圖右上角縮放與重置工具列 -->
+        <div class="map-zoom-controls">
+          <button class="zoom-btn" onclick="zoomMap(0.2)" title="放大島嶼">＋</button>
+          <button class="zoom-btn" onclick="zoomMap(-0.2)" title="縮小島嶼">－</button>
+          <button class="zoom-btn" onclick="resetIslandView()" title="置中全島視角">🎯</button>
+        </div>
+
+        <!-- 手機版左右滑動巡島提示條 -->
+        <div class="mobile-pan-hint" id="mobile-pan-hint">
+          <span>👆 左右滑動巡視全島 · 點擊發光地標進入展館</span>
+        </div>
+      </div>
+
+      <!-- 底部一鍵快速傳送列 (Quick Teleport Dock) -->
+      <nav class="island-dock" id="island-dock" aria-label="島嶼地標快速傳送列">
+        <div class="dock-inner">
+          <button class="dock-item" data-landmark="images" onclick="openPavilion('images')">
+            <span class="dock-icon">🎨</span>
+            <span class="dock-name">雲巔美術館</span>
+            <span class="dock-count" id="dock-count-images">0</span>
+          </button>
+          <button class="dock-item" data-landmark="videos" onclick="openPavilion('videos')">
+            <span class="dock-icon">🎬</span>
+            <span class="dock-name">星光醫學劇院</span>
+            <span class="dock-count" id="dock-count-videos">0</span>
+          </button>
+          <button class="dock-item" data-landmark="comics" onclick="openPavilion('comics')">
+            <span class="dock-icon">💬</span>
+            <span class="dock-name">慢畫樹屋</span>
+            <span class="dock-count" id="dock-count-comics">0</span>
+          </button>
+          <button class="dock-item" data-landmark="novels" onclick="openPavilion('novels')">
+            <span class="dock-icon">🌱</span>
+            <span class="dock-name">薛丁格溫室</span>
+            <span class="dock-count" id="dock-count-novels">0</span>
+          </button>
+          <button class="dock-item" data-landmark="apps" onclick="openPavilion('apps')">
+            <span class="dock-icon">⚡</span>
+            <span class="dock-name">量子實驗室</span>
+            <span class="dock-count" id="dock-count-apps">0</span>
+          </button>
+          <button class="dock-item" data-landmark="profile" onclick="openPavilion('profile')">
+            <span class="dock-icon">🩺</span>
+            <span class="dock-name">島主觀星診所</span>
+          </button>
+          <button class="dock-item" data-landmark="lighthouse" onclick="openPavilion('lighthouse')">
+            <span class="dock-icon">📡</span>
+            <span class="dock-name">跨維度燈塔</span>
+          </button>
+        </div>
+      </nav>
+    </main>
+
+    <!-- ==========================================
+         主視圖 B：全島總覽列表模式 (#island-list-view)
+         ========================================== -->
+    <section id="island-list-view" class="island-list-view">
+      <div class="list-view-header">
+        <div class="list-hero-card">
+          <img src="https://drive.google.com/thumbnail?id=1sgSYbMVX3uEKegLo4zZV8X5ujwglWxI-&sz=w400" class="list-hero-avatar" alt="Famidoc">
+          <div class="list-hero-info">
+            <h2>🏝️ 我的AI島 · 全島創作總覽</h2>
+            <p>歡迎來到張文華醫師 (Famidoc Chang) 的 AI 創作生態島！您可以在此一覽全島五大展館的所有作品，或隨時切回「🗺️ 島嶼地圖」享受沉浸式巡島體驗。</p>
+          </div>
+          <button class="back-to-map-btn" onclick="switchMainView('map')">🗺️ 返回島嶼地圖</button>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('images')">🎨 雲巔美術館 (IMAGES)</button>
+          <button class="tab-btn" onclick="switchTab('videos')">🎬 星光劇院 (VIDEOS)</button>
+          <button class="tab-btn" onclick="switchTab('comics')">💬 慢畫樹屋 (COMICS)</button>
+          <button class="tab-btn" onclick="switchTab('novels')">🌱 薛丁格溫室 (NOVELS)</button>
+          <button class="tab-btn" onclick="switchTab('apps')">⚡ 量子實驗室 (APPS)</button>
+        </div>
+
+        <div class="action-bar">
+          <div class="action-group" style="gap: 10px;">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 搜尋島上作品關鍵字、標籤或創作說明..." onkeyup="filterData()">
+            <select id="sortSelect" class="sort-select" onchange="updateGallery()">
+              <option value="newest">✨ 最新登島 (NEWEST)</option>
+              <option value="popular">🔥 最高點閱 (POPULAR)</option>
+              <option value="liked">❤️ 最多按讚 (LIKED)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="gallery-images" class="gallery-section active"></div>
+      <div id="gallery-videos" class="gallery-section"></div>
+      <div id="gallery-comics" class="gallery-section"></div>
+      <div id="gallery-apps" class="gallery-section"></div>
+      <div id="gallery-novels" class="gallery-section"></div>
+
+      <footer class="island-footer">
+        &copy; 2026 <span>Famidoc Chang (張文華醫師)</span> · 我的AI島 My AI Island.<br>
+        與 <a href="https://famidoc.github.io/my-ai-works/" target="_blank" rel="noopener">My AI Works</a> 共享雲端資料庫 · Powered by AI &amp; GitHub Pages.
+      </footer>
+    </section>
+
+    <!-- ==========================================
+         沉浸式「半透明毛玻璃展館艙」(#pavilion-modal)
+         點擊島上任一地標時優雅展開
+         ========================================== -->
+    <div id="pavilion-modal" class="pavilion-overlay" onclick="closePavilionOnBackdrop(event)">
+      <div class="pavilion-cabin" onclick="event.stopPropagation()">
+        <!-- 展館頂部導覽與快速切換列 -->
+        <div class="pavilion-topbar">
+          <div class="pavilion-quick-tabs" id="pavilion-quick-tabs">
+            <button class="pav-tab" data-pav="images" onclick="openPavilion('images')">🎨 雲巔美術館</button>
+            <button class="pav-tab" data-pav="videos" onclick="openPavilion('videos')">🎬 星光醫學劇院</button>
+            <button class="pav-tab" data-pav="comics" onclick="openPavilion('comics')">💬 慢畫樹屋</button>
+            <button class="pav-tab" data-pav="novels" onclick="openPavilion('novels')">🌱 薛丁格溫室</button>
+            <button class="pav-tab" data-pav="apps" onclick="openPavilion('apps')">⚡ 量子實驗室</button>
+            <button class="pav-tab" data-pav="profile" onclick="openPavilion('profile')">🩺 島主診所</button>
+            <button class="pav-tab" data-pav="lighthouse" onclick="openPavilion('lighthouse')">📡 跨維度燈塔</button>
+          </div>
+          <button class="pavilion-close-btn" onclick="closePavilion()" title="關閉展館返回島嶼地圖">✕ 返回島上</button>
+        </div>
+
+        <!-- 展館橫幅與島主引言 -->
+        <div class="pavilion-hero" id="pavilion-hero">
+          <div class="pavilion-hero-icon" id="pavilion-hero-icon">🎨</div>
+          <div class="pavilion-hero-text">
+            <div class="pavilion-hero-meta">
+              <span class="pavilion-zone-badge" id="pavilion-zone-badge">ZONE 01 // CLOUD PEAK GALLERY</span>
+              <span class="pavilion-count-pill" id="pavilion-count-pill">館藏 0 件</span>
+            </div>
+            <h2 id="pavilion-title">雲巔美術館</h2>
+            <p id="pavilion-quote">在巨木與雲海交會的露台上，每一幅畫都是光影與水彩的量子顯影。</p>
+          </div>
+        </div>
+
+        <!-- 區塊 1：五大創作展館內容區 (搜尋列 + 瀑布流作品牆) -->
+        <div id="pavilion-works-body" class="pavilion-body">
+          <div class="pavilion-ActionBar">
+            <div class="pavilion-search-wrap">
+              <input type="text" id="pavilionSearchInput" class="search-input" placeholder="🔍 在本館中搜尋關鍵字或畫風標籤..." oninput="onPavilionSearch(this.value)">
+            </div>
+            <div class="pavilion-sort-wrap">
+              <select id="pavilionSortSelect" class="sort-select" onchange="onPavilionSort(this.value)">
+                <option value="newest">✨ 最新上架</option>
+                <option value="popular">🔥 最高點閱</option>
+                <option value="liked">❤️ 最多按讚</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="pavilion-gallery-grid" class="pavilion-gallery-grid"></div>
+          <div id="pavilion-load-more-wrap" class="pavilion-load-more-wrap" style="display: none;">
+            <button class="pavilion-more-btn" onclick="loadMorePavilionItems()">✨ 載入更多館藏作品 ▾</button>
+          </div>
+        </div>
+
+        <!-- 區塊 2：島主診所 · 觀星台 (個人簡介與全島數據) -->
+        <div id="pavilion-profile-body" class="pavilion-body" style="display: none;">
+          <div class="island-profile-card">
+            <div class="island-profile-left">
+              <img src="https://drive.google.com/thumbnail?id=1sgSYbMVX3uEKegLo4zZV8X5ujwglWxI-&sz=w400" class="island-profile-avatar" alt="張文華醫師 Famidoc Chang">
+              <div class="doctor-badge">🩺 駐島家庭醫學科專科醫師</div>
+            </div>
+            <div class="island-profile-center">
+              <h3>張文華 醫師 <span>(Famidoc Chang)</span></h3>
+              <p class="island-profile-bio">
+                歡迎登陸「我的AI島」！我是一個已退休、熱愛 AI 的家庭醫學科專科醫師。<br>
+                這座生態島嶼記錄了我利用 AI 探索科幻與情感邊界的旅程——將<strong>科幻敘事、視覺藝術、實證醫學、宇宙哲思與 Vibe Coding 程式設計</strong>融合在同一片奇幻海域。
+              </p>
+              <div class="island-pillars">
+                <div class="pillar-card">
+                  <span class="pillar-icon">🧬</span>
+                  <div>
+                    <strong>實證醫學 × 加減學學</strong>
+                    <p>以家庭醫師的溫暖與嚴謹，拆解最新國際期刊，守護大腦與身心健康。</p>
+                  </div>
+                </div>
+                <div class="pillar-card">
+                  <span class="pillar-icon">🌌</span>
+                  <div>
+                    <strong>科幻敘事 × 量子溫室</strong>
+                    <p>在物理定律與人間煙火氣的交界，書寫關於愛、執念與放手的療癒故事。</p>
+                  </div>
+                </div>
+                <div class="pillar-card">
+                  <span class="pillar-icon">🎨</span>
+                  <div>
+                    <strong>水彩光影 × 創客實驗</strong>
+                    <p>探索透明水彩、雙重曝光與 AI 代理工具，讓想像力化為看得見的風景。</p>
+                  </div>
+                </div>
+              </div>
+              <div class="social-btn-group">
+                <a href="https://mail.google.com/mail/?view=cm&fs=1&to=famidoctor@gmail.com&su=Hi_Famidoc_From_AI_Island" target="_blank" class="social-link">✉️ 寫信給島主 (EMAIL ME)</a>
+                <a href="https://www.facebook.com/zhang.wen.hua.948904/" target="_blank" class="social-link">📘 FACEBOOK 專頁</a>
+                <a href="https://famidoc.github.io/my-ai-works/" target="_blank" class="social-link secondary-link">🚀 原版 My AI Works</a>
+              </div>
+            </div>
+            <div class="island-profile-right">
+              <img src="https://drive.google.com/thumbnail?id=1ESzbQ5MnpwenxesOMQy1lE65HgfcBfFJ&sz=w400" class="qr-img" alt="Scan Me">
+              <div class="qr-text">SCAN TO VISIT</div>
+            </div>
+          </div>
+
+          <div class="island-stats-dashboard" id="island-stats-dashboard"></div>
+        </div>
+
+        <!-- 區塊 3：跨維度通訊燈塔 (訂閱電子報 + 全島人氣熱榜 Top 10) -->
+        <div id="pavilion-lighthouse-body" class="pavilion-body" style="display: none;">
+          <div class="lighthouse-subscribe-box" id="subscribe">
+            <div class="lighthouse-sub-header">
+              <span class="lighthouse-pulse-icon">📡</span>
+              <div>
+                <h3>跨維度共振通訊站 · 訂閱新作品通知</h3>
+                <p>只要島上有新畫作、新科普影片或《薛丁格的退休生活》最新章節解鎖，燈塔就會透過量子電波第一時間通知您！</p>
+              </div>
+            </div>
+            <div class="lighthouse-sub-form">
+              <input type="email" id="sub-email" class="sub-input" placeholder="請輸入您的 Email 信箱接收登島通知..." required>
+              <button id="sub-btn" class="sub-btn" onclick="subscribeNewsletter()">📡 立即訂閱 (SUBSCRIBE)</button>
+            </div>
+            <div id="sub-msg" class="action-msg"></div>
+          </div>
+
+          <div class="lighthouse-leaderboard">
+            <div class="leaderboard-header">
+              <h3>🏆 全島人氣創作風雲榜 (TOP 10)</h3>
+              <div class="leaderboard-tabs">
+                <button id="lb-tab-views" class="lb-tab active" onclick="renderLeaderboard('views')">🔥 最高點閱榜</button>
+                <button id="lb-tab-likes" class="lb-tab" onclick="renderLeaderboard('likes')">❤️ 最多按讚榜</button>
+              </div>
+            </div>
+            <div id="leaderboard-list" class="leaderboard-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         彩蛋彈窗：島主處方籤 & 薛丁格的橘貓 (#fortune-modal)
+         ========================================== -->
+    <div id="fortune-modal" class="modal-overlay" onclick="closeFortuneModal(event)">
+      <div class="fortune-modal-card" onclick="event.stopPropagation()">
+        <button class="fortune-close-btn" onclick="closeFortuneModalDirect()">✕</button>
+        <div class="fortune-header">
+          <span class="fortune-cat-icon">🐈✨</span>
+          <div>
+            <span class="fortune-badge">QUANTUM PRESCRIPTION // 跨維度隨機奇遇</span>
+            <h3>島主今日處方籤 &amp; 薛丁格的橘貓</h3>
+          </div>
+        </div>
+        <blockquote class="fortune-quote" id="fortune-quote-text">
+          「根據熱力學第二定律，孤立系統總是走向熵增；但只要打開一本好書或看一幅畫，心靈就能瞬間獲得負熵。」
+        </blockquote>
+        <div class="fortune-recommend-label">🎁 橘貓從平行宇宙為您叼來的推薦作品：</div>
+        <div id="fortune-work-box" class="fortune-work-box"></div>
+        <div class="fortune-actions">
+          <button class="fortune-draw-btn" onclick="drawNewFortune()">🎲 再抽一張處方籤</button>
+          <button class="fortune-open-btn" id="fortune-open-work-btn">🚀 立即鑑賞此作品 ▶</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         單一作品鑑賞燈箱 (#modal) — 與 My AI Works 完全相容
+         ========================================== -->
+    <div id="modal" class="modal-overlay" onclick="closeModal(event)">
+      <div class="nav-btn prev" onclick="changeSlide(-1)">&#10094;</div>
+      <div class="nav-btn next" onclick="changeSlide(1)">&#10095;</div>
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="close-btn" onclick="closeModalDirect()">×</div>
+        <div id="modal-media-container" class="modal-body"></div>
+        <div class="modal-info">
+          <span id="modal-tag" class="tag"></span>
+          <h2 id="modal-title"></h2>
+          <p id="modal-desc"></p>
+          <div id="modal-actions"></div>
+          <div class="comments-section">
+            <div class="comments-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              ISLAND LOGS // 島嶼訪客留言
+            </div>
+            <div class="comment-form">
+              <input type="text" id="comment-nick" class="comment-input" placeholder=">> NICKNAME (您的登島暱稱)" maxlength="30">
+              <textarea id="comment-content" class="comment-textarea" placeholder=">> 留下一段島嶼足跡與心得..." required></textarea>
+              <button id="comment-submit" class="comment-submit-btn" onclick="submitComment()">TRANSMIT / 傳送留言</button>
+            </div>
+            <div id="comments-list" class="comments-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         專屬沉浸式小說閱讀彈窗 (#novel-modal) — 與 My AI Works 完全相容
+         ========================================== -->
+    <div id="novel-modal" class="modal-overlay" onclick="closeNovelModal(event)">
+      <div class="novel-modal-content" onclick="event.stopPropagation()">
+        <div class="close-btn" onclick="closeNovelModalDirect()">×</div>
+
+        <!-- 閱讀器工具列 -->
+        <div class="reader-toolbar">
+          <div class="reader-toolbar-title-wrap">
+            <span class="novel-tag-badge">🌱 溫室連載</span>
+            <span id="novel-toolbar-title" class="novel-toolbar-title"></span>
+          </div>
+          <div class="reader-toolbar-center">
+            <select id="novel-chapter-select" class="reader-chapter-select" onchange="onChapterSelectChange(this.value)">
+            </select>
+          </div>
+          <div class="reader-toolbar-actions">
+            <button class="reader-ctrl-btn" id="reader-theme-btn" onclick="cycleReaderTheme()" title="切換閱讀主題 (🌙深色 / 📜護眼 / ☀️淺色)">🌙</button>
+            <button class="reader-ctrl-btn" onclick="adjustFontSize(-1)" title="字體縮小">A-</button>
+            <button class="reader-ctrl-btn" onclick="adjustFontSize(1)" title="字體放大">A+</button>
+          </div>
+        </div>
+
+        <!-- 小說封面與大綱區（書籍概覽與完整目錄） -->
+        <div id="novel-overview-section" class="novel-overview-section">
+          <div class="novel-overview-grid">
+            <div class="novel-cover-wrap">
+              <img id="novel-cover-img" src="" alt="小說封面">
+            </div>
+            <div class="novel-info-wrap">
+              <span id="novel-overview-tag" class="tag">#連載小說</span>
+              <h2 id="novel-overview-title" class="novel-overview-title"></h2>
+              <div class="novel-stats-row">
+                <span id="novel-overview-views" class="view-count"></span>
+                <span id="novel-overview-likes" class="like-count"></span>
+                <span id="novel-overview-chapters-count" class="cmt-count"></span>
+              </div>
+              <!-- 防劇透提醒條 -->
+              <div id="novel-spoiler-notice" class="novel-spoiler-notice" style="display: none;">
+                <span class="spoiler-icon">⚠️</span>
+                <span><strong>防雷提醒：</strong>簡介包含企劃大綱與背景設定，想保留驚喜請直接開始閱讀！</span>
+              </div>
+              <div class="novel-desc-container">
+                <p id="novel-overview-desc" class="novel-overview-desc"></p>
+                <button id="novel-desc-toggle-btn" class="novel-desc-toggle-btn" onclick="toggleNovelDesc()" style="display: none;">展開完整設定大綱 ▾</button>
+              </div>
+              <div class="novel-action-buttons">
+                <button class="novel-primary-btn" onclick="startReadingLatest()">開始閱讀最新章節 ▶</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="novel-toc-container">
+            <h3 class="novel-toc-heading">📑 章節目錄列表 (TABLE OF CONTENTS)</h3>
+            <div id="novel-toc-list" class="novel-toc-list"></div>
+          </div>
+        </div>
+
+        <!-- 章節內文閱讀主區 -->
+        <div id="novel-reading-section" class="novel-reading-section" style="display: none;">
+          <div class="chapter-header">
+            <div class="chapter-meta-line">
+              <span id="chapter-date" class="chapter-date-badge"></span>
+              <span id="chapter-num" class="chapter-num-badge"></span>
+            </div>
+            <h2 id="chapter-title" class="chapter-title"></h2>
+          </div>
+
+          <div id="chapter-content-box" class="chapter-content-box reader-theme-dark">
+          </div>
+
+          <!-- 章節底部切換列 -->
+          <div class="chapter-nav-row">
+            <button id="btn-prev-chapter" class="chapter-nav-btn" onclick="navigateChapter(-1)">◀ 上一章</button>
+            <button class="chapter-nav-btn toc-nav-btn" onclick="showNovelOverview()">📑 目錄簡介</button>
+            <button id="btn-next-chapter" class="chapter-nav-btn" onclick="navigateChapter(1)">下一章 ▶</button>
+          </div>
+
+          <!-- 章節按讚與分享 -->
+          <div class="chapter-interact-bar">
+            <button id="chapter-like-btn" class="modal-like-btn" onclick="handleChapterLike()"></button>
+            <button id="chapter-share-btn" class="share-btn" onclick="handleChapterShare()"></button>
+          </div>
+
+          <!-- 章節獨立留言區 -->
+          <div class="comments-section">
+            <div class="comments-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              GREENHOUSE TERMINAL // 本章訪客心得
+            </div>
+            <div class="comment-form">
+              <input type="text" id="chapter-comment-nick" class="comment-input" placeholder=">> NICKNAME (您的暱稱)" maxlength="30">
+              <textarea id="chapter-comment-content" class="comment-textarea" placeholder=">> 對本章節想說些什麼？" required></textarea>
+              <button id="chapter-comment-submit" class="comment-submit-btn" onclick="submitChapterComment()">TRANSMIT / 傳送</button>
+            </div>
+            <div id="chapter-comments-list" class="comments-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         PWA 安裝教學與一鍵登島彈窗 (#pwa-install-modal)
+         ========================================== -->
+    <div id="pwa-install-modal" class="modal-overlay" onclick="closePwaModal(event)">
+      <div class="fortune-modal-card pwa-modal-card" onclick="event.stopPropagation()">
+        <button class="fortune-close-btn" onclick="closePwaModalDirect()">✕</button>
+        <div class="fortune-header">
+          <img src="icon-192.png" alt="我的AI島 App" class="pwa-modal-icon">
+          <div>
+            <span class="fortune-badge">ISLAND OS // STANDALONE PWA</span>
+            <h3>將「我的AI島」安裝到您的裝置</h3>
+          </div>
+        </div>
+        <p class="pwa-modal-intro">
+          安裝為獨立 App 後，您可以直接從<strong>手機主畫面或電腦桌面</strong>一鍵登島，享受<strong>全螢幕無邊框視野</strong>與<strong>離線快取巡島體驗</strong>！
+        </p>
+
+        <div id="pwa-guide-steps" class="pwa-guide-steps"></div>
+
+        <div class="pwa-feature-pills">
+          <span class="pwa-pill">⚡ 秒速啟動登島</span>
+          <span class="pwa-pill">🖥️ 全螢幕沉浸視角</span>
+          <span class="pwa-pill">📡 支援離線閱讀溫室小說</span>
+          <span class="pwa-pill">🚀 長按圖示快速傳送展館</span>
+        </div>
+
+        <div class="fortune-actions">
+          <button id="pwa-native-trigger-btn" class="fortune-open-btn" style="display: none;" onclick="triggerNativePwaPrompt()">📲 立即一鍵安裝 App</button>
+          <button class="fortune-draw-btn" onclick="closePwaModalDirect()">我知道了，繼續巡島</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 離線與系統狀態輕量通知條 -->
+    <div id="pwa-toast" class="pwa-toast" aria-live="polite"></div>
+
+    <div id="backToTop" class="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>
+    </div>
+
+    <script src="app.js?v=20261027_3"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js?v=20261027_3')
+            .then(registration => {
+              console.log('我的AI島 ServiceWorker 註冊成功，範圍為: ', registration.scope);
+            })
+            .catch(err => {
+              console.log('ServiceWorker 註冊失敗: ', err);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>

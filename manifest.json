@@ -1,0 +1,64 @@
+{
+  "id": "./",
+  "name": "我的AI島 My AI Island — 張文華醫師的 AI 創作生態島",
+  "short_name": "我的AI島",
+  "description": "歡迎登陸張文華醫師 (Famidoc Chang) 的 AI 奇幻創作生態島！探索雲巔美術館、星光醫學劇院、慢畫樹屋、薛丁格蘭花溫室與量子創客實驗室。",
+  "lang": "zh-TW",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1520",
+  "theme_color": "#0f2027",
+  "categories": ["art", "books", "education", "entertainment"],
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "🎨 雲巔美術館",
+      "short_name": "雲巔美術館",
+      "description": "欣賞透明水彩與 AI 奇幻視覺藝術創作",
+      "url": "./index.html?zone=images",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "🌱 薛丁格蘭花溫室",
+      "short_name": "薛丁格溫室",
+      "description": "閱讀《薛丁格的退休生活》等跨維度溫馨科幻連載小說",
+      "url": "./index.html?zone=novels",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "🎬 星光醫學劇院",
+      "short_name": "星光劇院",
+      "description": "觀賞【加減學學】實證醫學科普與未來洞察影片",
+      "url": "./index.html?zone=videos",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "⚡ 量子創客實驗室",
+      "short_name": "量子實驗室",
+      "description": "體驗 Vibe Coding 打造的 AI 互動數位工具與 Web App",
+      "url": "./index.html?zone=apps",
+      "icons": [{ "src": "icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}
